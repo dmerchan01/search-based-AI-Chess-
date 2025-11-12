@@ -1,23 +1,38 @@
-# Entorno virtual
-venv/
-env/
-.venv/
-
-# Python
+# === Python & VSCode ===
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.log
+*.sqlite3
+*.db
+*.bak
+*.swp
+*.swo
+*.tmp
 
-# Configs editores
-.vscode/
-.idea/
+# === Virtual environments ===
+venv/
+.venv/
 
-# Modelos binarios
-*.pt
-*.onnx
-*.tflite
+# === Environment variables ===
+#.env
+#.env.*
 
-# Sistema
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === VS Code ===
+.vscode/settings.json
+
+# === OS-specific files ===
 .DS_Store
 Thumbs.db
+
+# === Heroku or build caches ===
+*.pid
+*.seed
+*.log
+
+# === Gitignore global patterns ===
+*.orig
