@@ -64,74 +64,273 @@ class ChessGUI:
         self.info_label = tk.Label(root, text="Turn: white (Human)")
         self.info_label.pack(pady=5)
 
+        # Storage tables
+        self.white_storage = [[None for _ in range(3)] for _ in range(8)]
+        self.black_storage = [[None for _ in range(3)] for _ in range(8)]
+
+        # Columns names
+        self.white_storage_cols = ['i', 'j', 'k']
+        self.black_storage_cols = ['l', 'm', 'n']
+
+        # Current move filename being processed
+        self.current_move_filename = None
+
         # Initial board draw
         self.draw_board()
 
+    # Determine move kind 
+    def get_move_kind(self, move: chess.Move) -> str:
+        """
+            Determine if the move is a normal move, capture, or promotion.
+            Returns one of: "move", "capture", "promotion".
+            Parameters:
+                - move: chess.Move instance
+            Returns:
+                - str: kind of move
+        """
+
+        # Check move type
+        is_capture = self.board.is_capture(move)
+        is_promotion = move.promotion is not None
+
+        # Return kind
+        if is_capture and is_promotion:
+            return "capture_promotion"
+        if is_promotion:
+            return "promotion"
+        elif is_capture:
+            return "capture"
+        else:
+            return "move"
+
+    # Convert storage indices to square notation
+    def storage_index_to_square(self, color: bool, col_idx: int, row_idx: int) -> str:
+        """
+            Convert storage indices to chess square notation.
+            E.g., (0,0) -> 'i1', (2,7) -> 'k8'.
+            Parameters:
+                - color: chess.WHITE or chess.BLACK
+                - col_idx: column index (0, 1, or 2)
+                - row_idx: row index (0 to 7)
+            Returns:
+                - str: square notation (e.g., 'i1', 'k8')
+        """
+
+        # Determine column letter based on color
+        cols = self.white_storage_cols if color == chess.WHITE else self.black_storage_cols
+        
+        # Build square notation
+        col_letter = cols[col_idx]          
+        row_number = row_idx + 1
+
+        # Return square string            
+        return f"{col_letter}{row_number}"
+    
+    # Get next storage square for captured piece
+    def get_next_storage_square(self, captured_color: bool) -> str:
+        """
+            Return the next available storage square for a captured piece.
+            Marks that square as occupied after returning it.
+            Parameters: 
+            - captured_color: color of the captured piece (chess.WHITE or chess.BLACK)
+            Returns:    
+            - str: square notation (e.g., 'i1', 'l3')
+        """
+
+        # Select appropriate storage
+        if captured_color == chess.WHITE:
+            storage = self.white_storage
+        else:
+            storage = self.black_storage
+
+        # Find next free square in columns i/j/k or l/m/n
+        for row in range(8):
+            for col in range(2):
+                if storage[row][col] is None:
+                    storage[row][col] = "USED"   # Mark as occupied
+                    return self.storage_index_to_square(captured_color, col, row)
+
+        # If no free square found, raise error
+        raise RuntimeError("There are no free storage squares available for captured pieces.")
+
+    # Get next queen source square for promotion
+    def get_next_queen_source_square(self, color: bool) -> str:
+        """
+            Return the next available queen source square for promotion.
+            Marks that square as used after returning it.
+            Parameters:
+                - color: chess.WHITE or chess.BLACK
+            Returns:
+                - str: square notation (e.g., 'k1', 'n5')
+        """
+
+        # Select appropriate storage
+        if color == chess.WHITE:
+            storage = self.white_storage
+        else:
+            storage = self.black_storage
+
+        # Find next free queen source square in column k or n
+        col = 2  
+        for row in range(8):
+            if storage[row][col] != "USED":
+                storage[row][col] = "USED"
+                return self.storage_index_to_square(color, col, row)
+
+        # If no free square found, raise error
+        raise RuntimeError("No free queen source squares available for promotion.")
+
+    # Encode robot move sequence 
+    def encode_robot_sequence(self, move: chess.Move) -> str:
+        """
+            Encode the given move into a robot-readable sequence.
+            Parameters:
+                - move: chess.Move instance
+            Returns:
+                - str: encoded move sequence (e.g., 'a2a3', 'a5i1b6a5', 'a7j1k1a8', 'a8l3b7j1n1a8')
+        """
+
+        # Basic from/to squares
+        from_sq = chess.square_name(move.from_square)
+        to_sq = chess.square_name(move.to_square)
+
+        # Determine move type
+        is_capture = self.board.is_capture(move)
+        is_promotion = move.promotion is not None
+
+        # Get moving piece color before the move
+        moving_piece = self.board.piece_at(move.from_square)
+        moving_color = moving_piece.color if moving_piece else chess.WHITE
+
+        # Handle different move types
+        if is_capture:
+            captured_piece = self.board.piece_at(move.to_square)
+            if captured_piece is None and self.board.is_en_passant(move):
+                return from_sq + to_sq
+
+        # Normal move cases and return it
+        if not is_capture and not is_promotion:
+            return from_sq + to_sq
+
+        # Simple capture move cases and return it
+        if is_capture and not is_promotion:
+            captured_color = captured_piece.color
+            captured_sq = to_sq
+            captured_storage_sq = self.get_next_storage_square(captured_color)
+            return captured_sq + captured_storage_sq + from_sq + to_sq
+
+        # Store pawn and queen squares for promotion cases
+        pawn_storage_sq = self.get_next_storage_square(moving_color)
+        queen_source_sq = self.get_next_queen_source_square(moving_color)
+
+        # Promotion move case without capture and return it
+        if not is_capture and is_promotion:
+            return from_sq + pawn_storage_sq + queen_source_sq + to_sq
+
+        # Promotion move case with capture and return it
+        if is_capture and is_promotion:
+            captured_piece = self.board.piece_at(move.to_square)
+            captured_color = captured_piece.color
+            captured_sq = to_sq
+            captured_storage_sq = self.get_next_storage_square(captured_color)
+            return captured_sq + captured_storage_sq + from_sq + pawn_storage_sq + queen_source_sq + to_sq
+            
+
+        # General fallback
+        return from_sq + to_sq
+
     # Helper method for robot sync
-
-    def write_move_files(self, move: chess.Move):
+    def write_move_file(self, move: chess.Move):
         """
-            Create/overwrite initialMove.txt and finalMove.txt with
-            the from/to squares of the given move (e.g., 'a1', 'a5').
+            Create <kind_move>.txt with the encoded move sequence for the robot.
+            Parameters:
+                - move: chess.Move instance
+            Returns:    
+                - None
         """
 
-        # Remove old files if they exist
-        for fname in ("initialMove.txt", "finalMove.txt"):
-            if os.path.exists(fname):
-                os.remove(fname)
+        # Determine move kind and filename
+        kind = self.get_move_kind(move)
 
-        from_sq_name = chess.square_name(move.from_square)  # e.g., 'a1'
-        to_sq_name = chess.square_name(move.to_square)      # e.g., 'a5'
+        # Determine filename based on move kind
+        if kind == "move":
+            fname = "move.txt"
+        elif kind == "capture":
+            fname = "capture.txt"
+        elif kind == "promotion":
+            fname = "promotion.txt"
+        else:
+            fname = "capturedAndPromoted.txt"
 
-        with open("initialMove.txt", "w", encoding="utf-8") as f:
-            f.write(from_sq_name)
+        # Save current move filename
+        self.current_move_filename = fname
 
-        with open("finalMove.txt", "w", encoding="utf-8") as f:
-            f.write(to_sq_name)
+        # Obtain encoded sequence
+        sequence = self.encode_robot_sequence(move)
 
-        print(f"[Files] initialMove.txt = {from_sq_name}, finalMove.txt = {to_sq_name}")
+        # Write to file
+        with open(fname, "w", encoding="utf-8") as f:
+            f.write(sequence)
+
+        # Debug print
+        print(f"[File] {fname} = {sequence}")
 
     # Wait until both move files are deleted
-    def wait_until_files_deleted(self, callback):
+    def wait_until_file_deleted(self, callback):
         """
-            Periodically checks if initialMove.txt and finalMove.txt
-            no longer exist. When both are deleted, calls `callback`.
+            Wait until the current move file is deleted by the robot.
+            Once deleted, call the provided callback function.
+            Parameters:
+                - callback: function to call once file is deleted
+            Returns:
+                - None
         """
-        initial_exists = os.path.exists("initialMove.txt")
-        final_exists = os.path.exists("finalMove.txt")
 
-        # Both files are gone -> external system finished using the move
-        if not initial_exists and not final_exists:
+        # Get current move filename
+        fname = self.current_move_filename
+
+        # Check if file still exists
+        exists = os.path.exists(fname)
+
+        # If not exists, call callback; else, check again after delay
+        if not exists:
+            self.current_move_filename = None
             callback()
-        # Check again in 200 ms
         else:
-            self.root.after(200, lambda: self.wait_until_files_deleted(callback))
+            self.root.after(200, lambda: self.wait_until_file_deleted(callback))
 
+    # Callback after human move is processed
     def after_human_move_ready(self):
         """
             Called when the robot/external system has finished
             processing the human move (files deleted).
             Now it's time for the computer to move.
         """
+
+        # Check for game over
         if self.board.is_game_over():
             self.show_result()
             return
 
+        # Update info label
         self.info_label.config(text="Turn: black (Computer)")
         
         # Let the AI make its move
         self.computer_move()
 
+    # Callback after AI move is processed
     def after_ai_move_ready(self):
         """
             Called when the robot/external system has finished
             processing the computer move (files deleted).
             Now it's time for the human to move again.
         """
+        # Check for game over
         if self.board.is_game_over():
             self.show_result()
             return
 
+        # Allow human to move again
         self.can_human_move = True
         self.info_label.config(text="Turn: white (Human)")
 
@@ -253,16 +452,18 @@ class ChessGUI:
 
             # Make the move made by the human
             print(f"Move (Human): {move.uci()}")
+
+            # Send move to robot first and wait before pushing
+            self.can_human_move = False
+            self.write_move_file(move)
+            self.info_label.config(
+                text="Human move sent (<kind_move>.txt). Waiting external execution..."
+            )
+
+            # Now push the move to the board
             self.board.push(move)
             self.selected_square = None
             self.draw_board()
-
-            # Send move to robot via files
-            self.can_human_move = False
-            self.write_move_files(move)
-            self.info_label.config(
-                text="Human move sent (initialMove.txt / finalMove.txt). Waiting external execution..."
-            )
 
             # Check for game over
             if self.board.is_game_over():
@@ -270,19 +471,14 @@ class ChessGUI:
                 return
 
             # Wait until files are deleted, then continue with computer move
-            self.wait_until_files_deleted(self.after_human_move_ready)
+            self.wait_until_file_deleted(self.after_human_move_ready)
 
     # AI move handling 
     def computer_move(self):
         """
             Let the computer (AI) make its move.
-            Parameters:
-                - self: ChessGUI instance
-            Returns:
-                - None
         """
-
-        # Ignore if game is over
+        # Check for game over
         if self.board.is_game_over():
             return
 
@@ -292,26 +488,31 @@ class ChessGUI:
             self.show_result()
             return
 
-        # Make the AI move
+        # Debug print
         print(f"Move (Computer): {move.uci()}")
-        move_san = self.board.san(move)
-        self.board.push(move)
-        self.draw_board()
 
-        # Send AI move to robot via files
+        # Calculate SAN for display before pushing
+        move_san = self.board.san(move)
+
+        # Send move to robot first and wait before pushing
         self.can_human_move = False
-        self.write_move_files(move)
+        self.write_move_file(move)
         self.info_label.config(
             text=f"Black plays: {move_san}. Waiting external execution of AI move..."
         )
+
+        # Now push the move to the board
+        self.board.push(move)
+        self.draw_board()
 
         # Check for game over
         if self.board.is_game_over():
             self.show_result()
             return
 
-        # Wait until files are deleted, then give turn back to human
-        self.wait_until_files_deleted(self.after_ai_move_ready)
+        # Wait until files are deleted, then allow human to move
+        self.wait_until_file_deleted(self.after_ai_move_ready)
+
 
     # Show game result
     def show_result(self):
