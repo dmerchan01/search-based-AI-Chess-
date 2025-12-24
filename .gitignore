@@ -33,3 +33,16 @@ Thumbs.db
 # === Random files ===
 game.pgn
 positions.json
+
+# Robot output files (do not track)
+move.txt
+capture.txt
+promotion.txt
+capture_promotion.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
