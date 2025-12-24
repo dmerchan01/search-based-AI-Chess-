@@ -1,0 +1,224 @@
+' ROUTES AND CONSTANT DEFINITIONS
+#define PATH_BASE "X:/EpsonRC70/Projects/chess_arm_robot/"
+
+' GLOBAL VARIABLES
+Global Real g_ZSafe       ' Safe travel height (fixed)
+Global Real g_U, g_V, g_W
+Global Integer iFileNum
+
+' DATA VARIABLES (Now includes Z)
+Global Real g_ParseX, g_ParseY, g_ParseZ
+Global Real g_PathX(20), g_PathY(20), g_PathZ(20)
+
+Function ajedrez
+    ' ROBOT INITIAL CONFIGURATION
+    Motor On
+    Power High
+    Speed 50
+    Accel 50, 50
+    
+    ' Define safe height (air travel)
+    g_ZSafe = 210.0
+    
+    ' Fixed orientation (6 axes)
+    g_U = 134.3
+    g_V = 0.75
+    g_W = 179.6
+       
+    Off 9 ' Gripper open
+
+    Print "System ready. Waiting for Python files..."
+
+    ' MAIN LISTENING LOOP
+    Do
+        ' 1. MOVE case
+        If FileExists(PATH_BASE + "move.txt") Then
+            Print "Detected: move.txt"
+            Call ReadAndExecute(PATH_BASE + "move.txt", 0)
+        
+        ' 2. CAPTURE case
+        ElseIf FileExists(PATH_BASE + "capture.txt") Then
+            Print "Detected: capture.txt"
+            Call ReadAndExecute(PATH_BASE + "capture.txt", 1)
+            
+        ' 3. PROMOTION case
+        ElseIf FileExists(PATH_BASE + "promotion.txt") Then
+            Print "Detected: promotion.txt"
+            ' Reuse capture logic
+            Call ReadAndExecute(PATH_BASE + "promotion.txt", 2)
+   
+        ' 4. CAPTURE + PROMOTION case
+        ElseIf FileExists(PATH_BASE + "capture_promotion.txt") Then
+            Print "Detected: capture_promotion.txt"
+            Call ReadAndExecute(PATH_BASE + "capture_promotion.txt", 3)
+        EndIf
+        
+        Wait 0.2
+    Loop
+Fend
+
+' -------------------------------------------------------
+' FILE READING AND DISPATCH FUNCTION
+' -------------------------------------------------------
+Function ReadAndExecute(filePath$ As String, type As Integer)
+    Integer fNum
+    String data$
+    Integer count
+    
+    fNum = FreeFile
+    
+    ' Open file directly
+    ROpen filePath$ As #fNum
+    
+    count = 0
+    Do While Not Eof(fNum)
+        Line Input #fNum, data$
+        
+        ' Call parser that extracts X, Y, and Z
+        Call ParseLine(data$)
+        
+        g_PathX(count) = g_ParseX
+        g_PathY(count) = g_ParseY
+        g_PathZ(count) = g_ParseZ ' Store specific Z (143 or 118)
+        
+        count = count + 1
+        If count > 19 Then Exit Do
+    Loop
+    
+    Close #fNum
+    Del filePath$
+    
+    Print "Points read: ", count
+    
+    ' --- STRATEGY SELECTION ---
+    Select type
+        Case 0
+            Call Logic_Move
+        Case 1
+            Call Logic_Capture(count)
+        Case 2
+            Call Logic_Capture(count)
+        Case 3
+            Call Logic_CapProm(count)
+    Send
+Fend
+
+' ------------------------------------------
+' LOGIC 0: MOVE (Origin -> Destination)
+' -------------------------------------------
+Function Logic_Move
+    Print "Executing Move..."
+    Call PickPlace(0, 1)
+    Print "End Move"
+Fend
+
+' ---------------------------------------------
+' LOGIC 1 and 2: CAPTURE / PROMOTION
+' ---------------------------------------------
+Function Logic_Capture(numPoints As Integer)
+    If numPoints < 4 Then
+        Print "Error: Missing coordinates (Min 4)."
+        Exit Function
+    EndIf
+
+    Print "Phase 1: Removing piece..."
+    Call PickPlace(0, 1)
+    
+    Print "Phase 2: Placing piece..."
+    Call PickPlace(2, 3)
+    
+    Print "Operation completed."
+Fend
+
+' --------------------------------
+' LOGIC 3: CAPTURE + PROMOTION
+' --------------------------------
+Function Logic_CapProm(numPoints As Integer)
+    If numPoints < 6 Then
+        Print "Error: Missing coordinates for Cap+Prom (Min 6)."
+        Exit Function
+    EndIf
+    
+    Print "Phase 1: Removing enemy piece..."
+    Call PickPlace(0, 1)
+    
+    Print "Phase 2: Removing own pawn..."
+    Call PickPlace(2, 3)
+    
+    Print "Phase 3: Inserting Queen..."
+    Call PickPlace(4, 5)
+    
+    Print "Capture with Promotion completed."
+Fend
+
+'-------------------------------------------
+' HELPER: PICK & PLACE (With Dynamic Z)
+'-------------------------------------------
+Function PickPlace(idxFrom As Integer, idxTo As Integer)
+    ' --- PICK ---
+    ' 1. Go to origin ABOVE (Use fixed g_ZSafe)
+    Go XY(g_PathX(idxFrom), g_PathY(idxFrom), g_ZSafe, g_U, g_V, g_W)
+    
+    ' 2. Lower to origin (Use file-specific g_PathZ)
+    Move XY(g_PathX(idxFrom), g_PathY(idxFrom), g_PathZ(idxFrom), g_U, g_V, g_W)
+    
+    On 9 ' Close gripper
+    Wait 1
+    
+    ' 3. Raise back to g_ZSafe
+    Move XY(g_PathX(idxFrom), g_PathY(idxFrom), g_ZSafe, g_U, g_V, g_W)
+    
+    ' --- PLACE ---
+    ' 4. Go to destination ABOVE
+    Go XY(g_PathX(idxTo), g_PathY(idxTo), g_ZSafe, g_U, g_V, g_W)
+    
+    ' 5. Lower to destination (Use file-specific g_PathZ)
+    Move XY(g_PathX(idxTo), g_PathY(idxTo), g_PathZ(idxTo), g_U, g_V, g_W)
+    
+    Off 9 ' Open gripper
+    Wait 1
+    
+    ' 6. Raise back to g_ZSafe
+    Move XY(g_PathX(idxTo), g_PathY(idxTo), g_ZSafe, g_U, g_V, g_W)
+Fend
+
+' -----------------------------------------
+' PARSER (Reads X, Y, Z)
+' Splits string: "100.5, 200.5, 143.0"
+' -----------------------------------------
+Function ParseLine(lineIn$ As String)
+    Integer comma1, comma2
+    String sX$, sY$, sZ$, remainder$
+    
+    ' 1. Find first comma (End of X)
+    comma1 = InStr(lineIn$, ",")
+    
+    If comma1 > 0 Then
+        sX$ = Left$(lineIn$, comma1 - 1)
+        
+        ' Remaining string after first comma
+        remainder$ = Mid$(lineIn$, comma1 + 1)
+        
+        ' 2. Find second comma (End of Y)
+        comma2 = InStr(remainder$, ",")
+        
+        If comma2 > 0 Then
+            sY$ = Left$(remainder$, comma2 - 1)
+            sZ$ = Mid$(remainder$, comma2 + 1)
+            
+            ' Store in globals
+            g_ParseX = Val(sX$)
+            g_ParseY = Val(sY$)
+            g_ParseZ = Val(sZ$)
+        Else
+            ' If second comma not found, assume Z is missing (old format or error)
+            Print "Z format error: " + lineIn$
+            g_ParseZ = 0 ' Or a safe default value
+        EndIf
+    Else
+        Print "X,Y format error: " + lineIn$
+        g_ParseX = 0
+        g_ParseY = 0
+        g_ParseZ = 0
+    EndIf
+Fend
