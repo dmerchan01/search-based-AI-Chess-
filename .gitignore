@@ -38,7 +38,8 @@ Thumbs.db
 *.orig
 
 # === Robot output files ===
-# Windows path creates literal directory on Linux
-X:\EpsonRC70\
+# Windows path creates literal directory on Linux with special characters
+# The directory name literally contains backslashes
+X:\\EpsonRC70\\Projects\\chess_arm_robot/
 # Also ignore generated txt files in EpsonRC70 directory
 EpsonRC70/Projects/chess_arm_robot/*.txt

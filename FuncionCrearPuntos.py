@@ -5,7 +5,14 @@ import os
 def bilinear_interpolation(c1, c2, c3, c4, u, v):
     """
     Bilinear interpolation for a 2D grid.
-    c1, c2, c3, c4 are corner points, u and v are interpolation factors.
+    
+    Args:
+        c1, c2, c3, c4: numpy arrays representing corner points (2D coordinates)
+        u: interpolation factor in the horizontal direction (0.0 to 1.0)
+        v: interpolation factor in the vertical direction (0.0 to 1.0)
+    
+    Returns:
+        numpy array with interpolated 2D coordinates
     """
     return (c1 * (1 - u) * (1 - v) +
             c2 * u * (1 - v) +
