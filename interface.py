@@ -41,7 +41,7 @@ class ChessGUI:
         - finalMove.txt   -> to-square   (e.g., 'a5')
         The game only continues when both files have been deleted.
     """
-    #NEW CHANGE
+    # Path for robot files to write and delete
     ROBOT_DIR = r"X:\EpsonRC70\Projects\chess_arm_robot"
 
     # Constructor
@@ -280,10 +280,6 @@ class ChessGUI:
         sequence = self.encode_robot_sequence(move)
 
         generar_archivo_robot(sequence, type)
-
-        # Write to file
-        # with open(fname, "w", encoding="utf-8") as f:
-        #     f.write(sequence)
 
         # Debug print
         print(f"[File] {fname} = {sequence}")
