@@ -118,9 +118,13 @@ def generar_archivo_robot(cadena_movimientos, tipo_movimiento):
 
     for i in range(0, len(cadena_movimientos), 2):
         casilla = cadena_movimientos[i : i+2]
-        punto = chess_to_mm(casilla)
-        # Escribimos X, Y, Z (3 valores)
-        lista_coordenadas.append(f"{punto[0]:.2f},{punto[1]:.2f},{punto[2]:.2f}")
+        try:
+            punto = chess_to_mm(casilla)
+            # Escribimos X, Y, Z (3 valores)
+            lista_coordenadas.append(f"{punto[0]:.2f},{punto[1]:.2f},{punto[2]:.2f}")
+        except Exception as e:
+            print(f"Error procesando '{casilla}': {e}")
+            return
 
     try:
         with open(ruta_completa, "w") as f:
