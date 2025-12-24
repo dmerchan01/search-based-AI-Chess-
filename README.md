@@ -44,12 +44,12 @@ The project is structured into modular components:
 
 ## Project Structure
 
-- main.py               # Program entry point
-- interface.py          # GUI and system orchestration
-- engine/evaluation.py  # Board evaluation logic
-- engine/search.py      # Negamax search engine
-- engine/recorder.py    # Game recording (FEN & PGN)
-- engine/robot_files.py # Robot move file generation
+- main.py               
+- interface.py
+- engine/evaluation.py  
+- engine/search.py      
+- engine/recorder.py    
+- engine/robot_files.py
 
 ### Robotic Arm Integration
 
