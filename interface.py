@@ -4,9 +4,7 @@ import os
 
 from engine.evaluation import Evaluator
 from engine.search import NegamaxEngine
-
-# Import the new file .py
-from FuncionCrearPuntos import generar_archivo_robot
+from engine.robot_files import generate_robot_file
 
 # Visual configuration
 SQUARE_SIZE = 80
@@ -46,6 +44,13 @@ class ChessGUI:
 
     # Constructor
     def __init__(self, root: tk.Tk):
+        """
+            Initializes the chess GUI.
+            Parameters: 
+                - root: Tkinter root window
+            Returns:
+                - None
+        """
         
         # Initialize root window
         self.root = root
@@ -279,7 +284,7 @@ class ChessGUI:
         # Obtain encoded sequence
         sequence = self.encode_robot_sequence(move)
 
-        generar_archivo_robot(sequence, type)
+        generate_robot_file(sequence, type)
 
         # Debug print
         print(f"[File] {fname} = {sequence}")

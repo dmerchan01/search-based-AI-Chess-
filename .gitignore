@@ -15,13 +15,6 @@ __pycache__/
 venv/
 .venv/
 
-# === Environment variables ===
-#.env
-#.env.*
-
-# === Jupyter ===
-.ipynb_checkpoints/
-
 # === VS Code ===
 .vscode/settings.json
 
@@ -36,3 +29,7 @@ Thumbs.db
 
 # === Gitignore global patterns ===
 *.orig
+
+# === Random files ===
+game.pgn
+positions.json
