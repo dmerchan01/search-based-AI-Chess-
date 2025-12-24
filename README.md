@@ -89,3 +89,22 @@ The system waits for confirmation (file deletion) before allowing the next turn,
 - **random** – Fallback random move selection  
   https://docs.python.org/3/library/random.html
 
+
+---
+
+
+### How to Run
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/dmerchan01/AI-chess.git
+   ```
+2. Create and activate a virtual environment (optional but recommended).
+3. Install required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Run the application:
+   ```bash
+   python main.py
+   ```
