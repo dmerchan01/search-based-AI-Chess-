@@ -19,6 +19,30 @@ Each move, whether performed by the human or the AI, is encoded and sent to the 
 
 ---
 
+
+### Materials
+
+## Hardware
+
+- Industrial robotic arm (EPSON) – Used to physically move and manipulate the chess pieces on the board.
+- Personal computer (PC) – Runs the chess engine, graphical interface, and communication logic.
+- Physical chessboard – Surface where the robotic arm executes the moves.
+- Standard chess pieces – Objects manipulated by the robotic arm during gameplay.
+- PC–Robot connection – Used to transfer movement files between the software and the robot controller.
+
+## Software
+
+- Python – Main programming language used to develop the system.
+- python-chess – Handles chess rules, board representation, legal moves, and game states.
+- Tkinter – Used to create the graphical user interface (GUI).
+- Negamax algorithm with alpha–beta pruning – Implements the AI decision-making process.
+- EPSON RC+ environment – Used to program and control the robotic arm.
+- Windows OS – Operating system used to run the project.
+
+
+---
+
+
 ## System Architecture
 
 The project is structured into modular components:
@@ -104,7 +128,28 @@ The system waits for confirmation (file deletion) before allowing the next turn,
    ```bash
    pip install -r requirements.txt
    ```
-4. Run the application:
-   ```bash
+4. Run the '.spel' file on the EPSON program:
+5. Run the application after '.spel' file is running:
+  ```bash
    python main.py
    ```
+
+
+---
+
+### Future Improvements
+
+- Integration of computer vision for automatic board state detection.
+- Improved robot communication via serial or network protocols.
+- Enhanced evaluation functions and deeper search depth.
+- Support for different robotic platforms.
+
+
+---
+
+### License
+
+This project is intended for educational and research purposes.
+
+
+---
